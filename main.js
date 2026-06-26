@@ -80,28 +80,14 @@ function scanGames() {
   return games;
 }
 
-// Poll until Steam's window is the active foreground window (signals game exited),
-// then minimize Steam and bring our launcher back.
+// When the game exits its window is removed and the WM returns focus to our
+// fullscreen app automatically — no polling needed.
 function watchForGameExit(win) {
-  const interval = setInterval(() => {
-    exec("xdotool getactivewindow getwindowname 2>/dev/null", (err, stdout) => {
-      if (err || !stdout) return;
-      const active = stdout.trim().toLowerCase();
-      // Steam's main window title is just "Steam"
-      if (active === 'steam') {
-        clearInterval(interval);
-        // Minimize all Steam windows
-        exec('xdotool search --classname steam windowminimize all 2>/dev/null; true');
-        // Bring our launcher back
-        win.show();
-        win.focus();
-        win.webContents.send('game-exited');
-      }
-    });
-  }, 1000);
-
-  // Safety: stop watching after 6 hours
-  setTimeout(() => clearInterval(interval), 6 * 60 * 60 * 1000);
+  win.once('focus', () => {
+    // Suppress any Steam window that might have surfaced
+    exec('xdotool search --classname steam windowminimize all 2>/dev/null; true');
+    win.webContents.send('game-exited');
+  });
 }
 
 function createWindow() {
