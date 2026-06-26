@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STEAM_APPS="$HOME/.local/share/Steam/steamapps"
+ROFI_CMD=(rofi -dmenu -i -p "Steam")
+
+declare -a lines
+declare -A appid_by_name
+
+for f in "$STEAM_APPS"/appmanifest_*.acf; do
+  [[ -e "$f" ]] || continue
+  name=$(grep -oP '"name"\s*"\K[^"]+' "$f" | head -n1 || true)
+  appid=$(grep -oP '"appid"\s*"\K[^"]+' "$f" | head -n1 || true)
+  [[ -n "${name:-}" && -n "${appid:-}" ]] || continue
+  appid_by_name["$name"]="$appid"
+  lines+=("$name")
+done
+
+if [[ ${#lines[@]} -eq 0 ]]; then
+  echo "No installed Steam games found."
+  exit 0
+fi
+
+selected=$(printf '%s\n' "${lines[@]}" | sort -u | "${ROFI_CMD[@]}" -selected-row 0 || true)
+[[ -n "${selected:-}" ]] || exit 0
+
+appid="${appid_by_name[$selected]}"
+[[ -n "$appid" ]] || exit 1
+
+exec steam "steam://rungameid/$appid"

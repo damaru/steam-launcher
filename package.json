@@ -1,0 +1,12 @@
+{
+  "name": "steam-launcher",
+  "version": "1.0.0",
+  "description": "Fullscreen Steam game launcher with gamepad support",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

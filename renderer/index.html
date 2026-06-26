@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steam Launcher</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="header">
+    <span id="title">Games</span>
+    <span id="controls-hint">
+      <span class="hint"><kbd>&#x25B2;&#x25BC;&#x25C4;&#x25BA;</kbd> / D-pad Navigate</span>
+      <span class="hint"><kbd>Enter</kbd> / <kbd>A</kbd> Launch</span>
+      <span class="hint"><kbd>Esc</kbd> Quit</span>
+    </span>
+  </div>
+
+  <div id="grid-container">
+    <div id="grid"></div>
+  </div>
+
+  <div id="launch-overlay" class="hidden">
+    <div id="launch-box">
+      <div id="launch-name"></div>
+      <div id="launch-sub">Launching...</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

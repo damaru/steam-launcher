@@ -1,0 +1,202 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --accent: #1a9fff;
+  --bg: #0d0d0d;
+  --surface: #161b22;
+  --text: #e6e6e6;
+  --text-dim: #7a8a9a;
+  --card-w: 180px;
+  --card-h: 270px;
+  --gap: 20px;
+  --header-h: 64px;
+  --radius: 8px;
+  --transition: 0.15s ease;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+/* ── Header ── */
+#header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  background: linear-gradient(to bottom, rgba(13,13,13,1) 70%, transparent);
+  z-index: 100;
+}
+
+#title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+#controls-hint {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.hint kbd {
+  display: inline-block;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: inherit;
+  margin-right: 4px;
+}
+
+/* ── Scrollable grid container ── */
+#grid-container {
+  position: absolute;
+  inset: 0;
+  padding-top: var(--header-h);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+#grid-container::-webkit-scrollbar { display: none; }
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--card-w));
+  gap: var(--gap);
+  padding: 24px 32px 48px;
+  justify-content: start;
+}
+
+/* ── Game card ── */
+.game-card {
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  background: var(--surface);
+  border: 2px solid transparent;
+  transition:
+    transform var(--transition),
+    border-color var(--transition),
+    box-shadow var(--transition);
+  flex-shrink: 0;
+}
+
+.game-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.game-card .no-image {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+  background: linear-gradient(135deg, #1a1f2e, #0f1218);
+}
+
+.game-card .label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 28px 10px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.game-card:hover .label,
+.game-card.focused .label {
+  opacity: 1;
+}
+
+/* Focused state (keyboard / gamepad) */
+.game-card.focused {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26, 159, 255, 0.35), 0 8px 32px rgba(0,0,0,0.6);
+  transform: scale(1.06);
+  z-index: 10;
+}
+
+/* ── Launch overlay ── */
+#launch-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(6px);
+  transition: opacity 0.2s;
+}
+
+#launch-overlay.hidden {
+  display: none;
+}
+
+#launch-box {
+  text-align: center;
+}
+
+#launch-name {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+#launch-sub {
+  font-size: 16px;
+  color: var(--text-dim);
+}
+
+/* Loading state */
+#grid.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  width: 100%;
+  color: var(--text-dim);
+  font-size: 18px;
+}
