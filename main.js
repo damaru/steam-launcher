@@ -48,17 +48,28 @@ function getGameImage(appid) {
   const dir = path.join(LIBRARY_CACHE, appid);
   if (!fs.existsSync(dir)) return null;
 
-  // Prefer well-known names (portrait cover first)
-  const preferred = ['library_600x900.jpg', 'header.jpg', 'library_hero.jpg'];
-  for (const fname of preferred) {
-    const full = path.join(dir, fname);
-    if (fs.existsSync(full)) return full;
+  // Preferred image types in priority order (portrait first)
+  const preferred = ['library_600x900.jpg', 'library_capsule.jpg', 'header.jpg', 'library_header.jpg', 'library_hero.jpg'];
+
+  // Search top-level dir and one level of subdirectories
+  const searchDirs = [dir];
+  for (const entry of fs.readdirSync(dir)) {
+    const sub = path.join(dir, entry);
+    if (fs.statSync(sub).isDirectory()) searchDirs.push(sub);
   }
 
-  // Fall back to any .jpg in the directory
-  const files = fs.readdirSync(dir);
-  const jpg = files.find(f => f.endsWith('.jpg'));
-  if (jpg) return path.join(dir, jpg);
+  for (const name of preferred) {
+    for (const d of searchDirs) {
+      const full = path.join(d, name);
+      if (fs.existsSync(full)) return full;
+    }
+  }
+
+  // Last resort: any jpg in any searched dir
+  for (const d of searchDirs) {
+    const jpg = fs.readdirSync(d).find(f => f.endsWith('.jpg'));
+    if (jpg) return path.join(d, jpg);
+  }
 
   return null;
 }
