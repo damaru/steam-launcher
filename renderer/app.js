@@ -62,7 +62,32 @@ function renderGrid() {
     label.textContent = game.name;
     card.appendChild(label);
 
-    card.addEventListener('click', () => launchGame(i));
+    // Direct-launch badge (shown after detection)
+    if (game.appid !== '__bigpicture__') {
+      const badge = document.createElement('div');
+      badge.className = 'direct-badge hidden';
+      badge.title = 'Launch without Steam';
+      badge.textContent = 'DIRECT';
+      badge.addEventListener('click', e => {
+        e.stopPropagation();
+        launchGameDirect(i);
+      });
+      card.appendChild(badge);
+
+      // Detect in background and show badge if possible
+      window.steamLauncher.detectLaunchType(game.appid, game.name).then(info => {
+        if (info.native || info.proton) {
+          badge.classList.remove('hidden');
+          badge.classList.add(info.native ? 'native' : 'proton');
+          badge.title = info.native
+            ? `Native Linux: ${info.exe?.split('/').pop()}`
+            : `Proton: ${info.exe?.split('/').pop()}`;
+        }
+      });
+    }
+
+    card.addEventListener('click', () => launchGameDirect(i));
+    card.addEventListener('contextmenu', e => { e.preventDefault(); launchGame(i); });
     grid.appendChild(card);
   });
 }
@@ -171,6 +196,23 @@ async function launchGame(index) {
   // overlay is dismissed by the 'game-exited' event from main process
 }
 
+async function launchGameDirect(index) {
+  if (launching) return;
+
+  const game = games[index];
+  launching = true;
+  launchName.textContent = `${game.name} (direct)`;
+  overlay.classList.remove('hidden');
+
+  const result = await window.steamLauncher.directLaunch(game.appid, game.name);
+  if (!result.ok) {
+    overlay.classList.add('hidden');
+    launching = false;
+    alert(`Direct launch failed: ${result.error}`);
+  }
+  // on success, overlay dismissed by 'game-exited'
+}
+
 // Dismiss launch overlay when main process detects the game has exited
 window.steamLauncher.onGameExited(() => {
   overlay.classList.add('hidden');
@@ -196,12 +238,24 @@ function move(delta) {
   if (next >= 0 && next < games.length) focusCard(next);
 }
 
+// ── Gamepad hint bar ──────────────────────────────────────────────────────────
+const hintsEl = document.getElementById('hints');
+
+window.addEventListener('gamepadconnected', () => {
+  hintsEl.classList.replace('gamepad-hidden', 'gamepad-visible');
+});
+window.addEventListener('gamepaddisconnected', () => {
+  if (!navigator.getGamepads().some(Boolean))
+    hintsEl.classList.replace('gamepad-visible', 'gamepad-hidden');
+});
+
 // ── Gamepad ───────────────────────────────────────────────────────────────────
 const GAMEPAD = {
   AXIS_LX: 0,
   AXIS_LY: 1,
-  BTN_A: 0,         // Cross / A
-  BTN_B: 1,         // Circle / B  (unused for now)
+  BTN_A: 0,         // Cross / A  → direct launch
+  BTN_Y: 3,         // Triangle / Y → launch via Steam
+  BTN_B: 1,         // Circle / B  (unused)
   BTN_DPAD_UP: 12,
   BTN_DPAD_DOWN: 13,
   BTN_DPAD_LEFT: 14,
@@ -214,9 +268,9 @@ const REPEAT_DELAY = 300;  // ms before repeat starts
 const REPEAT_RATE  = 120;  // ms between repeats
 
 let gpState = {
-  // per-direction last-trigger timestamps
   up: 0, down: 0, left: 0, right: 0,
   aWasDown: false,
+  yWasDown: false,
   startWasDown: false,
 };
 
@@ -254,10 +308,15 @@ function gamepadTick(now) {
   tryRepeat('down',  goDown, columns);
   tryRepeat('up',    goUp, -columns);
 
-  // A button — launch
+  // A button — direct launch
   const aDown = gpPressed(pad.buttons[GAMEPAD.BTN_A]);
-  if (aDown && !gpState.aWasDown) launchGame(focusedIndex);
+  if (aDown && !gpState.aWasDown) launchGameDirect(focusedIndex);
   gpState.aWasDown = aDown;
+
+  // Y button — launch via Steam
+  const yDown = gpPressed(pad.buttons[GAMEPAD.BTN_Y]);
+  if (yDown && !gpState.yWasDown) launchGame(focusedIndex);
+  gpState.yWasDown = yDown;
 
   // Start button — quit
   const startDown = gpPressed(pad.buttons[GAMEPAD.BTN_START]);

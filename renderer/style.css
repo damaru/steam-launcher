@@ -153,6 +153,46 @@ html, body {
   text-overflow: ellipsis;
 }
 
+/* Direct-launch badge */
+.game-card .direct-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity var(--transition), transform var(--transition);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.game-card .direct-badge.native {
+  background: #27ae60;
+  color: #fff;
+}
+
+.game-card .direct-badge.proton {
+  background: #8e44ad;
+  color: #fff;
+}
+
+.game-card:hover .direct-badge:not(.hidden),
+.game-card.focused .direct-badge:not(.hidden) {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.game-card .direct-badge:hover {
+  filter: brightness(1.2);
+}
+
+
 .game-card:hover .label,
 .game-card.focused .label {
   opacity: 1;
@@ -239,3 +279,46 @@ html, body {
   color: var(--text-dim);
   font-size: 18px;
 }
+
+/* ── Controller hint bar ─────────────────────────────────────────────────── */
+#hints {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #c6d4df;
+  pointer-events: none;
+  transition: opacity 0.4s;
+  z-index: 50;
+}
+
+#hints.gamepad-hidden { opacity: 0; }
+#hints.gamepad-visible { opacity: 1; }
+
+.hint { display: flex; align-items: center; gap: 6px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.btn-cross    { background: #2a5298; color: #fff; }
+.btn-triangle { background: #1a6b4a; color: #fff; }
+.btn-dpad     { background: #444; color: #ddd; border-radius: 3px; }
+.btn-start    { background: #555; color: #ddd; }
