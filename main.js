@@ -90,14 +90,48 @@ function scanGames() {
   return games;
 }
 
-// When the game exits its window is removed and the WM returns focus to our
-// fullscreen app automatically — no polling needed.
+// Watch Steam's reaper process — it lives exactly as long as the game runs.
+// This works under both X11 and Wayland/cage without needing xdotool.
 function watchForGameExit(win) {
-  win.once('focus', () => {
-    // Suppress any Steam window that might have surfaced
-    exec('xdotool search --classname steam windowminimize all 2>/dev/null; true');
-    win.webContents.send('game-exited');
-  });
+  // Step 1: wait for reaper to appear (game starting)
+  const POLL_MS = 1500;
+  const REAPER_RE = /\/reaper$/;
+
+  function findReaperPid(cb) {
+    exec("pgrep -af '/reaper' 2>/dev/null", (_, stdout) => {
+      const line = (stdout || '').split('\n').find(l => REAPER_RE.test(l.trim()));
+      cb(line ? line.trim().split(/\s+/)[0] : null);
+    });
+  }
+
+  let findTimer = null;
+  let watchTimer = null;
+
+  findTimer = setInterval(() => {
+    findReaperPid(pid => {
+      if (!pid) return;
+      clearInterval(findTimer);
+
+      // Step 2: wait for that reaper pid to die (game exited)
+      watchTimer = setInterval(() => {
+        exec(`kill -0 ${pid} 2>/dev/null`, err => {
+          if (!err) return; // still alive
+          clearInterval(watchTimer);
+          // Bring our window back — works under both X11 and Wayland
+          win.show();
+          win.focus();
+          win.moveTop();
+          win.webContents.send('game-exited');
+        });
+      }, POLL_MS);
+    });
+  }, POLL_MS);
+
+  // Safety: cancel everything after 6 hours
+  setTimeout(() => {
+    clearInterval(findTimer);
+    clearInterval(watchTimer);
+  }, 6 * 60 * 60 * 1000);
 }
 
 function createWindow() {
