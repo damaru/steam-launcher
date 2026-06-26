@@ -55,18 +55,7 @@ function renderGrid() {
     if (game.appid === '__bigpicture__') card.classList.add('bigpicture');
     card.dataset.index = i;
 
-    if (game.imagePath) {
-      const img = document.createElement('img');
-      img.src = `file://${game.imagePath}`;
-      img.alt = game.name;
-      img.draggable = false;
-      img.onerror = () => {
-        img.replaceWith(noImageEl(game.name));
-      };
-      card.appendChild(img);
-    } else {
-      card.appendChild(noImageEl(game.name));
-    }
+    attachImageWithFallback(card, game);
 
     const label = document.createElement('div');
     label.className = 'label';
@@ -76,6 +65,38 @@ function renderGrid() {
     card.addEventListener('click', () => launchGame(i));
     grid.appendChild(card);
   });
+}
+
+// CDN fallback chain for a given appid
+function cdnUrls(appid) {
+  return [
+    `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900_2x.jpg`,
+    `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`,
+    `https://cdn.akamai.steamstatic.com/steam/apps/${appid}/header.jpg`,
+  ];
+}
+
+function attachImageWithFallback(card, game) {
+  const img = document.createElement('img');
+  img.alt = game.name;
+  img.draggable = false;
+
+  // Build the full list of URLs to try: local first, then CDN
+  const urls = [];
+  if (game.imagePath) urls.push(`file://${game.imagePath}`);
+  if (game.appid !== '__bigpicture__') urls.push(...cdnUrls(game.appid));
+
+  let idx = 0;
+  function tryNext() {
+    if (idx >= urls.length) {
+      img.replaceWith(noImageEl(game.name));
+      return;
+    }
+    img.src = urls[idx++];
+  }
+  img.onerror = tryNext;
+  tryNext();
+  card.appendChild(img);
 }
 
 function noImageEl(name) {
