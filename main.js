@@ -1,10 +1,20 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 
 const STEAM_APPS = path.join(process.env.HOME, '.local/share/Steam/steamapps');
 const LIBRARY_CACHE = path.join(process.env.HOME, '.local/share/Steam/appcache/librarycache');
+
+// Pre-start Steam silently (tray only) if it isn't already running.
+function ensureSteamRunning() {
+  try {
+    execSync('pgrep -x steam', { stdio: 'ignore' });
+    // Already running — nothing to do
+  } catch {
+    exec('steam -silent', { detached: true, stdio: 'ignore' });
+  }
+}
 
 const SKIP_KEYWORDS = [
   'steam linux runtime',
@@ -112,6 +122,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  ensureSteamRunning();
   const win = createWindow();
 
   ipcMain.handle('get-games', () => scanGames());
