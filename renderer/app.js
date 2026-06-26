@@ -227,7 +227,7 @@ document.addEventListener('keydown', e => {
     case 'ArrowLeft':  move(-1); break;
     case 'ArrowDown':  move(columns); break;
     case 'ArrowUp':    move(-columns); break;
-    case 'Enter':
+    case 'Enter':      launchGameDirect(focusedIndex); break;
     case ' ':          launchGame(focusedIndex); break;
     case 'Escape':     window.steamLauncher.quit(); break;
   }

@@ -50,12 +50,12 @@ function findLinuxExe(gameDir, gameName) {
       if (match) return path.join(dir, match);
     }
 
-    // Check for executable matching game name (no extension)
+    // Check for executable matching game name — extensionless only (e.g. "Hades", "celeste")
     const nameNorm = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
     const nameMatch = entries.find(e => {
-      if (EXE_BLACKLIST.test(e)) return false;
-      const base = path.basename(e, path.extname(e)).toLowerCase().replace(/[^a-z0-9]/g, '');
-      return base === nameNorm && isLinuxExecutable(path.join(dir, e)) && !e.endsWith('.exe');
+      if (EXE_BLACKLIST.test(e) || path.extname(e)) return false;
+      const base = e.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return base === nameNorm && isLinuxExecutable(path.join(dir, e));
     });
     if (nameMatch) return path.join(dir, nameMatch);
 
@@ -98,8 +98,9 @@ function findWindowsExe(gameDir, gameName) {
   return walk(gameDir, 0);
 }
 
-// Resolve which Proton to use for a given appid from config.vdf CompatToolMapping
-function resolveProtonPath(appid) {
+// Resolve Proton + its required Steam Linux Runtime entry point.
+// Returns { proton, entryPoint } or null.
+function resolveProtonInfo(appid) {
   let configText;
   try { configText = fs.readFileSync(path.join(STEAM_DIR, 'config/config.vdf'), 'utf8'); } catch { return null; }
 
@@ -107,7 +108,6 @@ function resolveProtonPath(appid) {
   const appSection = configText.match(new RegExp(`"${appid}"\\s*\\{([^}]+)\\}`, 's'));
   let toolName = appSection ? (appSection[1].match(/"name"\s+"([^"]+)"/) || [])[1] : null;
 
-  // Fallback: default_linux or proton_experimental
   if (!toolName) {
     const defaultMatch = configText.match(/"DefaultPlatformCompatTool"\s+"([^"]+)"/);
     toolName = defaultMatch ? defaultMatch[1] : 'proton_experimental';
@@ -118,17 +118,45 @@ function resolveProtonPath(appid) {
     proton_experimental: 'Proton - Experimental',
     proton_hotfix:       'Proton Hotfix',
   };
-  // proton_10 → "Proton 10.0", etc.
   const versionMatch = toolName.match(/^proton_(\d+)$/);
   const dirName = versionMatch
     ? `Proton ${versionMatch[1]}.0`
     : (NAME_MAP[toolName] || toolName);
 
-  // Search steamapps/common for that directory
-  const dirs = fs.readdirSync(path.join(STEAM_APPS, 'common'));
-  const found = dirs.find(d => d.toLowerCase() === dirName.toLowerCase())
-             || dirs.find(d => d.toLowerCase().startsWith('proton'));
-  return found ? path.join(STEAM_APPS, 'common', found, 'proton') : null;
+  const commonDir = path.join(STEAM_APPS, 'common');
+  const dirs = fs.readdirSync(commonDir);
+  const protonDirName = dirs.find(d => d.toLowerCase() === dirName.toLowerCase())
+                     || dirs.find(d => d.toLowerCase().startsWith('proton'));
+  if (!protonDirName) return null;
+
+  const protonDir = path.join(commonDir, protonDirName);
+  const proton    = path.join(protonDir, 'proton');
+
+  // Read toolmanifest.vdf to find require_tool_appid (the Steam Linux Runtime)
+  let runtimeAppid = null;
+  try {
+    const manifest = fs.readFileSync(path.join(protonDir, 'toolmanifest.vdf'), 'utf8');
+    const m = manifest.match(/"require_tool_appid"\s+"(\d+)"/);
+    if (m) runtimeAppid = m[1];
+  } catch {}
+
+  // Find the runtime installdir from its appmanifest
+  let entryPoint = null;
+  if (runtimeAppid) {
+    try {
+      const manifests = fs.readdirSync(STEAM_APPS).filter(f => f.startsWith(`appmanifest_${runtimeAppid}`));
+      if (manifests.length) {
+        const text = fs.readFileSync(path.join(STEAM_APPS, manifests[0]), 'utf8');
+        const m = text.match(/"installdir"\s+"([^"]+)"/);
+        if (m) {
+          const ep = path.join(commonDir, m[1], '_v2-entry-point');
+          if (fs.existsSync(ep)) entryPoint = ep;
+        }
+      }
+    } catch {}
+  }
+
+  return { proton, protonDir, entryPoint };
 }
 
 // Direct launch without Steam
@@ -163,6 +191,7 @@ async function directLaunch(appid, name, win) {
 
   if (linuxExe) {
     // Native Linux binary
+    console.log('[direct] native launch:', linuxExe);
     child = spawn(linuxExe, [], {
       cwd: path.dirname(linuxExe),
       env,
@@ -174,20 +203,33 @@ async function directLaunch(appid, name, win) {
     const windowsExe = findWindowsExe(gameDir, name);
     if (!windowsExe) return { ok: false, error: 'No executable found' };
 
-    const protonScript = resolveProtonPath(appid);
-    if (!protonScript || !fs.existsSync(protonScript)) {
+    const protonInfo = resolveProtonInfo(appid);
+    if (!protonInfo || !fs.existsSync(protonInfo.proton)) {
       return { ok: false, error: 'Proton not found' };
     }
 
     const compatDataPath = path.join(COMPAT_DATA, appid);
-    // Ensure compat data directory exists
     fs.mkdirSync(compatDataPath, { recursive: true });
 
-    env.STEAM_COMPAT_DATA_PATH         = compatDataPath;
+    env.STEAM_COMPAT_DATA_PATH          = compatDataPath;
     env.STEAM_COMPAT_CLIENT_INSTALL_PATH = STEAM_DIR;
-    env.PROTON_LOG                     = '0';
+    env.STEAM_COMPAT_TOOL_PATHS         = protonInfo.protonDir;
+    env.PROTON_LOG                      = '0';
 
-    child = spawn('python3', [protonScript, 'run', windowsExe], {
+    // Use the Steam Linux Runtime container (_v2-entry-point) if available;
+    // running Proton bare causes "wine client error: Bad file descriptor".
+    let cmd, cmdArgs;
+    if (protonInfo.entryPoint) {
+      cmd     = protonInfo.entryPoint;
+      cmdArgs = ['--verb=run', '--', protonInfo.proton, 'run', windowsExe];
+    } else {
+      cmd     = protonInfo.proton;
+      cmdArgs = ['run', windowsExe];
+    }
+
+    console.log('[direct] proton launch:', [cmd, ...cmdArgs].join(' '));
+    console.log('[direct] env: STEAM_COMPAT_DATA_PATH=%s STEAM_COMPAT_TOOL_PATHS=%s', env.STEAM_COMPAT_DATA_PATH, env.STEAM_COMPAT_TOOL_PATHS);
+    child = spawn(cmd, cmdArgs, {
       cwd: path.dirname(windowsExe),
       env,
       detached: true,
