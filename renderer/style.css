@@ -69,6 +69,15 @@ html, body {
   margin-right: 4px;
 }
 
+/* ── Clock ── */
+#clock {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Scrollable grid container ── */
 #grid-container {
   position: absolute;

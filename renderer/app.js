@@ -12,6 +12,19 @@ const overlay = document.getElementById('launch-overlay');
 const launchName = document.getElementById('launch-name');
 const gridContainer = document.getElementById('grid-container');
 
+// ── Clock ─────────────────────────────────────────────────────────────────────
+const clock = document.getElementById('clock');
+
+function updateClock() {
+  const now = new Date();
+  const date = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const time = now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  clock.textContent = `${date}  ${time}`;
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
 // ── Boot ─────────────────────────────────────────────────────────────────────
 async function init() {
   grid.textContent = 'Loading…';
