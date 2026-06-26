@@ -77,6 +77,16 @@ function scanGames() {
   }
 
   games.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Prepend the Big Picture tile
+  const steamIcon =
+    '/usr/share/icons/hicolor/256x256/apps/steam.png';
+  games.unshift({
+    name: 'Steam Big Picture',
+    appid: '__bigpicture__',
+    imagePath: fs.existsSync(steamIcon) ? steamIcon : null,
+  });
+
   return games;
 }
 
@@ -114,6 +124,10 @@ app.whenReady().then(() => {
   ipcMain.handle('get-games', () => scanGames());
 
   ipcMain.handle('launch-game', (_, appid) => {
+    if (appid === '__bigpicture__') {
+      exec('steam -bigpicture');
+      return true;
+    }
     exec(`steam -applaunch ${appid}`);
     watchForGameExit(win);
     return true;

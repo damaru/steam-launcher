@@ -199,7 +199,37 @@ html, body {
   color: var(--text-dim);
 }
 
-/* Loading state */
+/* Big Picture special tile */
+.game-card.bigpicture {
+  background: linear-gradient(135deg, #1b2838, #2a475e);
+  border-color: rgba(26, 159, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.game-card.bigpicture img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.game-card.bigpicture .label {
+  position: static;
+  background: none;
+  opacity: 1;
+  text-align: center;
+  font-size: 13px;
+  padding: 0;
+  color: #c6d4df;
+}
+
+.game-card.bigpicture:hover .label,
+.game-card.bigpicture.focused .label {
+  opacity: 1;
+}
 #grid.loading {
   display: flex;
   align-items: center;

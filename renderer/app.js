@@ -52,6 +52,7 @@ function renderGrid() {
   games.forEach((game, i) => {
     const card = document.createElement('div');
     card.className = 'game-card';
+    if (game.appid === '__bigpicture__') card.classList.add('bigpicture');
     card.dataset.index = i;
 
     if (game.imagePath) {
@@ -132,9 +133,16 @@ function scrollToFocused() {
 // ── Launch ────────────────────────────────────────────────────────────────────
 async function launchGame(index) {
   if (launching) return;
-  launching = true;
 
   const game = games[index];
+
+  // Big Picture: just open Steam, no overlay
+  if (game.appid === '__bigpicture__') {
+    await window.steamLauncher.launchGame(game.appid);
+    return;
+  }
+
+  launching = true;
   launchName.textContent = game.name;
   overlay.classList.remove('hidden');
 
