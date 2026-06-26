@@ -99,7 +99,7 @@ function scanGames() {
 function watchForGameExit(win) {
   // Step 1: wait for reaper to appear (game starting)
   const POLL_MS = 1500;
-  const REAPER_RE = /\/reaper$/;
+  const REAPER_RE = /\/reaper\s/;
 
   function findReaperPid(cb) {
     exec("pgrep -af '/reaper' 2>/dev/null", (_, stdout) => {
