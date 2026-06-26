@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const { exec, execSync } = require('child_process');
 
+// Disable xdg-desktop-portal screen/input capture requests that trigger
+// "Allow remote desktop control?" popups under GNOME Wayland.
+app.commandLine.appendSwitch('disable-features', 'WebRTCPipeWireCapturer');
+app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform');
 const STEAM_APPS = path.join(process.env.HOME, '.local/share/Steam/steamapps');
 const LIBRARY_CACHE = path.join(process.env.HOME, '.local/share/Steam/appcache/librarycache');
 
